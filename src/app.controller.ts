@@ -5,7 +5,6 @@ import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 @Controller()
 export class AppController {
   @Get('health')
-  @ApiOperation({ summary: 'Health check endpoint' })
   @ApiResponse({
     status: HttpStatus.OK,
     description: 'Server is healthy and running',
@@ -27,4 +26,3 @@ export class AppController {
     };
   }
 }
-
