@@ -1,4 +1,4 @@
-name: carline CI/CD
+name: Handyman CI/CD
 
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
         run: npm install --prefer-offline --no-audit
 
       - name: Verify build compilation
-        run: NODE_OPTIONS="--max-old-space-size=1024" npm run build
+        run: npm run build
 
   # -------------------------------------------------------------
   #  Deploy to Development 
@@ -33,7 +33,7 @@ jobs:
     name: Deploy to Development
     needs: check-backend
     if: github.ref == 'refs/heads/develop'
-    runs-on: [self-hosted, mail]
+    runs-on: [self-hosted] 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -53,14 +53,19 @@ jobs:
           chmod 600 .env
 
       - name: Add Node & PM2 to PATH
-        run: echo "/home/nodeteam/.local/share/fnm/node-versions/v22.21.1/installation/bin" >> $GITHUB_PATH
+        run: |
+          for p in /home/team_node/.local/share/fnm/current/bin /home/team_node/.local/share/fnm/node-versions/*/installation/bin /home/nodeteam/.local/share/fnm/node-versions/*/installation/bin; do
+            if [ -d "$p" ]; then
+              echo "$p" >> $GITHUB_PATH
+            fi
+          done
 
       - name: Build project
-        run: NODE_OPTIONS="--max-old-space-size=1024" npm run build
+        run: npm run build
 
       - name: Run backend with PM2
         run: |
-          pm2 reload carline-backend --update-env || pm2 start dist/main.js --name carline-backend
+          pm2 reload handyman-dev --update-env || pm2 start dist/main.js --name handyman-dev --max-memory-restart 500M
           pm2 save
 
   # -------------------------------------------------------------
@@ -70,7 +75,7 @@ jobs:
     name: Deploy to Production
     needs: check-backend
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, carline]
+    runs-on: [self-hosted] 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -90,28 +95,23 @@ jobs:
           chmod 600 .env
 
       - name: Add Node & PM2 to PATH
-        run: echo "/home/nodeteam/.local/share/fnm/node-versions/v22.21.1/installation/bin" >> $GITHUB_PATH
+        run: |
+          for p in /home/team_node/.local/share/fnm/current/bin /home/team_node/.local/share/fnm/node-versions/*/installation/bin /home/nodeteam/.local/share/fnm/node-versions/*/installation/bin; do
+            if [ -d "$p" ]; then
+              echo "$p" >> $GITHUB_PATH
+            fi
+          done
 
       - name: Build project
-        run: NODE_OPTIONS="--max-old-space-size=1024" npm run build
+        run: npm run build
 
-      - name: Run backend with PM2 in Cluster Mode (All CPU Cores)
+      - name: Run backend with PM2
         run: |
-          if pm2 describe handyman-backend > /dev/null 2>&1; then
-            echo "Existing process found. Scaling to all CPU cores and reloading with zero downtime..."
-            pm2 scale handyman-backend max || true
-            pm2 reload carline-backend --update-env
+          if pm2 describe handyman-prod > /dev/null 2>&1; then
+            echo "Existing process found. Reloading with zero downtime..."
+            pm2 reload handyman-prod --update-env
           else
-            echo "Starting fresh PM2 cluster across all available CPU cores with 1.5GB memory guard..."
-            pm2 start dist/main.js -i max --name carline-backend --max-memory-restart 1500M
+            echo "Starting fresh PM2 process..."
+            pm2 start dist/main.js --name handyman-prod --max-memory-restart 500M
           fi
           pm2 save
-
-      - name: Verify Production Health & Database Readiness
-        run: |
-          echo "Waiting for cluster workers to initialize..."
-          sleep 5
-          PORT_VAL=$(grep -E '^PORT=' .env | cut -d '=' -f2 | tr -d '\r\n ' || echo "4010")
-          PORT_VAL=${PORT_VAL:-4010}
-          echo "Checking production readiness probe on port $PORT_VAL..."
-          curl --fail --retry 5 --retry-delay 3 --retry-connrefused "http://localhost:${PORT_VAL}/api/v1/health/ready" || curl --fail "http://localhost:4010/api/v1/health/ready" || true
