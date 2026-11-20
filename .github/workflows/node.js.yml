@@ -1,0 +1,117 @@
+name: carline CI/CD
+
+on:
+  push:
+    branches: ['main', 'develop']
+
+jobs:
+  # -------------------------------------------------------------
+  #  Check Backend 
+  # -------------------------------------------------------------
+  check-backend:
+    name: Check Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Install dependencies
+        run: npm install --prefer-offline --no-audit
+
+      - name: Verify build compilation
+        run: NODE_OPTIONS="--max-old-space-size=1024" npm run build
+
+  # -------------------------------------------------------------
+  #  Deploy to Development 
+  # -------------------------------------------------------------
+  deploy-dev:
+    name: Deploy to Development
+    needs: check-backend
+    if: github.ref == 'refs/heads/develop'
+    runs-on: [self-hosted, mail]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Install dependencies
+        run: npm install --prefer-offline --no-audit
+
+      - name: Create .env file safely
+        run: |
+          rm -f .env
+          printf "%s" "${{ secrets.DEV_ENV_FILE }}" > .env
+          chmod 600 .env
+
+      - name: Add Node & PM2 to PATH
+        run: echo "/home/nodeteam/.local/share/fnm/node-versions/v22.21.1/installation/bin" >> $GITHUB_PATH
+
+      - name: Build project
+        run: NODE_OPTIONS="--max-old-space-size=1024" npm run build
+
+      - name: Run backend with PM2
+        run: |
+          pm2 reload carline-backend --update-env || pm2 start dist/main.js --name carline-backend
+          pm2 save
+
+  # -------------------------------------------------------------
+  #  Deploy to Production 
+  # -------------------------------------------------------------
+  deploy-prod:
+    name: Deploy to Production
+    needs: check-backend
+    if: github.ref == 'refs/heads/main'
+    runs-on: [self-hosted, carline]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: Install dependencies
+        run: npm install --prefer-offline --no-audit
+
+      - name: Create .env file safely
+        run: |
+          rm -f .env
+          printf "%s" "${{ secrets.PROD_ENV_FILE }}" > .env
+          chmod 600 .env
+
+      - name: Add Node & PM2 to PATH
+        run: echo "/home/nodeteam/.local/share/fnm/node-versions/v22.21.1/installation/bin" >> $GITHUB_PATH
+
+      - name: Build project
+        run: NODE_OPTIONS="--max-old-space-size=1024" npm run build
+
+      - name: Run backend with PM2 in Cluster Mode (All CPU Cores)
+        run: |
+          if pm2 describe handyman-backend > /dev/null 2>&1; then
+            echo "Existing process found. Scaling to all CPU cores and reloading with zero downtime..."
+            pm2 scale handyman-backend max || true
+            pm2 reload carline-backend --update-env
+          else
+            echo "Starting fresh PM2 cluster across all available CPU cores with 1.5GB memory guard..."
+            pm2 start dist/main.js -i max --name carline-backend --max-memory-restart 1500M
+          fi
+          pm2 save
+
+      - name: Verify Production Health & Database Readiness
+        run: |
+          echo "Waiting for cluster workers to initialize..."
+          sleep 5
+          PORT_VAL=$(grep -E '^PORT=' .env | cut -d '=' -f2 | tr -d '\r\n ' || echo "4010")
+          PORT_VAL=${PORT_VAL:-4010}
+          echo "Checking production readiness probe on port $PORT_VAL..."
+          curl --fail --retry 5 --retry-delay 3 --retry-connrefused "http://localhost:${PORT_VAL}/api/v1/health/ready" || curl --fail "http://localhost:4010/api/v1/health/ready" || true
