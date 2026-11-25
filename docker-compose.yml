@@ -1,0 +1,13 @@
+services:
+  handyman-backend:
+    container_name: handyman-backend
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "${PORT:-4022}:${PORT:-4022}"
+    env_file:
+      - .env
+    volumes:
+      - ./uploads:/app/uploads
