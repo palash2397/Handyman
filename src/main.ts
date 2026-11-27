@@ -61,8 +61,8 @@ async function bootstrap() {
     .setTitle(SWAGGER.TITLE)
     .setDescription(SWAGGER.DESCRIPTION)
     .setVersion(SWAGGER.VERSION)
-    .addServer('/handyman', 'Production / Staging Server (Behind Nginx proxy)')
-    .addServer('http://localhost:4007', 'Local Development Server (Port 4007)')
+    .addServer('/handyman')
+    .addServer('/')
     .addBearerAuth(
       {
         type: 'http',
