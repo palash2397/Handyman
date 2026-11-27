@@ -61,7 +61,8 @@ async function bootstrap() {
     .setTitle(SWAGGER.TITLE)
     .setDescription(SWAGGER.DESCRIPTION)
     .setVersion(SWAGGER.VERSION)
-    // .addServer(SWAGGER.SERVER_URL)
+    .addServer('/handyman')
+    .addServer('/')
     .addBearerAuth(
       {
         type: 'http',

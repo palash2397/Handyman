@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { AdminSeeder } from './seeders/admin.seeder';
+import { User, UserSchema } from '../modules/users/schemas/user.schema';
 
 @Module({
   imports: [
@@ -13,6 +15,9 @@ import { MongooseModule } from '@nestjs/mongoose';
       retryWrites: true,
       retryReads: true,
     }),
+    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
   ],
+  providers: [AdminSeeder],
+  exports: [AdminSeeder],
 })
 export class DatabaseModule {}
