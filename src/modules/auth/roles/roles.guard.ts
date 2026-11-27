@@ -6,10 +6,10 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
-import { ApiResponse } from 'src/helpers/ApiResponse';
+import { ApiResponse } from '../../../helpers/ApiResponse';
 import { ROLES_KEY } from './roles.decorator';
-import { UserRole } from 'src/types/enums';
-import { Msg } from 'src/helpers/responseMsg';
+import { UserRole } from '../../../types/enums';
+import { Msg } from '../../../helpers/responseMsg';
 
 @Injectable()
 export class RoleGuard implements CanActivate {

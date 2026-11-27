@@ -1,5 +1,16 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import {
+  Controller,
+  Post,
+  Get,
+  Patch,
+  Body,
+  Req,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
   ApiOperation,
   ApiResponse as SwaggerResponse,
   ApiTags,
@@ -11,6 +22,8 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
+import { JwtAuthGuard } from './jwt/jwt-auth.guard';
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -118,5 +131,61 @@ export class AuthController {
   })
   async resetPassword(@Body() changePasswordDto: ChangePasswordDto) {
     return this.authService.changePassword(changePasswordDto);
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @HttpCode(HttpStatus.OK)
+  @SwaggerResponse({
+    status: HttpStatus.OK,
+    description: 'Current user profile fetched successfully',
+  })
+  @SwaggerResponse({
+    status: HttpStatus.UNAUTHORIZED,
+    description: 'Unauthorized access - invalid or missing token',
+  })
+  async getMyProfile(@Req() req: any) {
+    return this.authService.getProfile(req.user.sub);
+  }
+
+  @Get('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @HttpCode(HttpStatus.OK)
+  @SwaggerResponse({
+    status: HttpStatus.OK,
+    description: 'Current user profile fetched successfully',
+  })
+  async getProfile(@Req() req: any) {
+    return this.authService.getProfile(req.user.sub);
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @HttpCode(HttpStatus.OK)
+  @SwaggerResponse({
+    status: HttpStatus.OK,
+    description: 'Current user profile updated successfully',
+  })
+  @SwaggerResponse({
+    status: HttpStatus.CONFLICT,
+    description: 'Phone number already exists',
+  })
+  async updateMyProfile(@Req() req: any, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(req.user.sub, dto);
+  }
+
+  @Patch('profile')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @HttpCode(HttpStatus.OK)
+  @SwaggerResponse({
+    status: HttpStatus.OK,
+    description: 'Current user profile updated successfully',
+  })
+  async updateProfile(@Req() req: any, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(req.user.sub, dto);
   }
 }

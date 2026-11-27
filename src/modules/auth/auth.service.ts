@@ -9,6 +9,7 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UserRole, UserStatus, OtpType } from '../../types/enums';
 import { generateOtp, getExpirationTime } from '../../helpers';
 import { Msg } from '../../helpers/responseMsg';
@@ -116,6 +117,7 @@ export class AuthService {
         sub: user._id,
         email: user.email,
         role: user.role,
+        roles: [user.role],
       };
 
       const accessToken = await this.jwtService.signAsync(payload);
@@ -402,6 +404,95 @@ export class AuthService {
       return new ApiResponse(200, {}, Msg.PASSWORD_CHANGED);
     } catch (error) {
       console.error('changePassword error:', error);
+      return new ApiResponse(500, {}, Msg.SERVER_ERROR);
+    }
+  }
+
+  async getProfile(userId: string) {
+    try {
+      const user = await this.usersService.findById(userId);
+      if (!user) {
+        return new ApiResponse(404, {}, Msg.USER_NOT_FOUND);
+      }
+
+      const data = {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        status: user.status,
+        isEmailVerified: user.isEmailVerified,
+        isPhoneVerified: user.isPhoneVerified,
+        onboardingStep: user.onboardingStep,
+        profileImage: user.profileImage,
+        bio: user.bio,
+        gender: user.gender,
+        dob: user.dob,
+        address: user.address,
+        languages: user.languages || [],
+        experienceYears: user.experienceYears,
+        companyName: user.companyName,
+        authorizedPersonName: user.authorizedPersonName,
+        createdAt: (user as any).createdAt,
+        updatedAt: (user as any).updatedAt,
+      };
+
+      return new ApiResponse(200, data, Msg.USER_FETCHED);
+    } catch (error) {
+      console.error('getProfile error:', error);
+      return new ApiResponse(500, {}, Msg.SERVER_ERROR);
+    }
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    try {
+      const user = await this.usersService.findById(userId);
+      if (!user) {
+        return new ApiResponse(404, {}, Msg.USER_NOT_FOUND);
+      }
+
+      if (dto.phone && dto.phone !== user.phone) {
+        const existingPhone = await this.usersService.findByPhone(dto.phone);
+        if (
+          existingPhone &&
+          existingPhone._id.toString() !== user._id.toString()
+        ) {
+          return new ApiResponse(409, {}, Msg.USER_PHONE_ALREADY_EXISTS);
+        }
+      }
+
+      const updatedUser = await this.usersService.update(userId, dto);
+      if (!updatedUser) {
+        return new ApiResponse(404, {}, Msg.USER_NOT_FOUND);
+      }
+
+      const data = {
+        id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        role: updatedUser.role,
+        status: updatedUser.status,
+        isEmailVerified: updatedUser.isEmailVerified,
+        isPhoneVerified: updatedUser.isPhoneVerified,
+        onboardingStep: updatedUser.onboardingStep,
+        profileImage: updatedUser.profileImage,
+        bio: updatedUser.bio,
+        gender: updatedUser.gender,
+        dob: updatedUser.dob,
+        address: updatedUser.address,
+        languages: updatedUser.languages || [],
+        experienceYears: updatedUser.experienceYears,
+        companyName: updatedUser.companyName,
+        authorizedPersonName: updatedUser.authorizedPersonName,
+        createdAt: (updatedUser as any).createdAt,
+        updatedAt: (updatedUser as any).updatedAt,
+      };
+
+      return new ApiResponse(200, data, Msg.USER_UPDATED);
+    } catch (error) {
+      console.error('updateProfile error:', error);
       return new ApiResponse(500, {}, Msg.SERVER_ERROR);
     }
   }

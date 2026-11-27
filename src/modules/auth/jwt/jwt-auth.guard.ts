@@ -7,7 +7,7 @@ import {
 
 import * as jwt from 'jsonwebtoken';
 
-import { ApiResponse } from 'src/helpers/ApiResponse';
+import { ApiResponse } from '../../../helpers/ApiResponse';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -33,7 +33,10 @@ export class JwtAuthGuard implements CanActivate {
 
     // 2. Verify token
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET!);
+      const decoded = jwt.verify(
+        token,
+        process.env.JWT_SECRET || 'myhandymanjwtsecret',
+      );
 
       console.log('Decoded JWT:', decoded);
 

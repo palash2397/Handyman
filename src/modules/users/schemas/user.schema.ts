@@ -58,6 +58,43 @@ export class User {
   @Prop({ trim: true })
   profileImage?: string;
 
+  @Prop({ trim: true })
+  bio?: string;
+
+  @Prop({ trim: true })
+  gender?: string;
+
+  @Prop({ trim: true })
+  dob?: string;
+
+  @Prop({
+    type: {
+      street: { type: String, trim: true },
+      city: { type: String, trim: true },
+      state: { type: String, trim: true },
+      country: { type: String, trim: true },
+      postalCode: { type: String, trim: true },
+      latitude: { type: Number },
+      longitude: { type: Number },
+    },
+    _id: false,
+  })
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    postalCode?: string;
+    latitude?: number;
+    longitude?: number;
+  };
+
+  @Prop({ type: [String], default: [] })
+  languages?: string[];
+
+  @Prop()
+  experienceYears?: number;
+
   @Prop()
   otp?: string;
 
