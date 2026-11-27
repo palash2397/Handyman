@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import { UserRole, UserStatus } from '../../../types/enums';
+import { UserRole, UserStatus, OtpType } from '../../../types/enums';
 
 export type UserDocument = User & Document;
 
@@ -63,6 +63,9 @@ export class User {
 
   @Prop()
   otpExpiresAt?: Date;
+
+  @Prop({ type: String, enum: OtpType, default: OtpType.ACCOUNT_VERIFICATION })
+  otpType?: OtpType;
 
   @Prop()
   resetPasswordOtp?: string;

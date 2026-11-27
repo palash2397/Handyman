@@ -1,5 +1,6 @@
-import { IsEmail, IsNotEmpty, IsString, Length } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, Length } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { OtpType } from '../../../types/enums';
 
 export class VerifyOtpDto {
   @ApiProperty({
@@ -18,4 +19,16 @@ export class VerifyOtpDto {
   @IsString()
   @Length(6, 6, { message: 'OTP must be exactly 6 digits' })
   otp: string;
+
+  @ApiPropertyOptional({
+    enum: OtpType,
+    example: OtpType.ACCOUNT_VERIFICATION,
+    description:
+      'Purpose of the OTP verification (ACCOUNT_VERIFICATION or FORGOT_PASSWORD). Defaults to ACCOUNT_VERIFICATION.',
+  })
+  @IsOptional()
+  @IsEnum(OtpType, {
+    message: 'type must be either ACCOUNT_VERIFICATION or FORGOT_PASSWORD',
+  })
+  type?: OtpType;
 }

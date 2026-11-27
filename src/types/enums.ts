@@ -11,3 +11,8 @@ export enum UserStatus {
   PENDING = 'PENDING',
   SUSPENDED = 'SUSPENDED',
 }
+
+export enum OtpType {
+  ACCOUNT_VERIFICATION = 'ACCOUNT_VERIFICATION',
+  FORGOT_PASSWORD = 'FORGOT_PASSWORD',
+}
