@@ -19,11 +19,6 @@ export class AuthController {
 
   @Post('register')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Register a new user (Customer, Provider, or Company)',
-    description:
-      'Creates a new account for Customer, Individual Provider, or Company. Returns user details and an OTP.',
-  })
   @SwaggerResponse({
     status: HttpStatus.OK,
     description: 'User registered successfully with OTP sent',
@@ -38,11 +33,6 @@ export class AuthController {
 
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Verify 6-digit OTP (for Registration or Password Reset)',
-    description:
-      'Verifies the 6-digit OTP code. For ACCOUNT_VERIFICATION: activates account and returns JWT accessToken. For FORGOT_PASSWORD: returns password resetToken.',
-  })
   @SwaggerResponse({
     status: HttpStatus.OK,
     description: 'OTP verified successfully',
@@ -57,11 +47,6 @@ export class AuthController {
 
   @Post('resend-otp')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Resend OTP verification code',
-    description:
-      'Generates and resends a new 6-digit OTP code for either registration or forgot-password with a fresh 5-minute expiry window.',
-  })
   @SwaggerResponse({
     status: HttpStatus.OK,
     description: 'OTP resent successfully',
@@ -76,11 +61,6 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Login with Email and Password',
-    description:
-      'Authenticates any registered user (including Admin) and returns a JWT access token. Requires email verification first.',
-  })
   @SwaggerResponse({
     status: HttpStatus.OK,
     description: 'Login successful',
@@ -99,11 +79,6 @@ export class AuthController {
 
   @Post('forgot-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Forgot Password - Request OTP',
-    description:
-      'Sends a 6-digit OTP to the registered email address for password reset.',
-  })
   @SwaggerResponse({
     status: HttpStatus.OK,
     description: 'OTP sent to registered email',
@@ -122,18 +97,14 @@ export class AuthController {
 
   @Post('change-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Change or Reset Password',
-    description:
-      'Updates the user password. Can be used after forgot-password OTP verification (with resetToken) or by providing the current oldPassword.',
-  })
   @SwaggerResponse({
     status: HttpStatus.OK,
     description: 'Password changed successfully',
   })
   @SwaggerResponse({
     status: HttpStatus.BAD_REQUEST,
-    description: 'Incorrect old password, same password entered, or validation failed',
+    description:
+      'Incorrect old password, same password entered, or validation failed',
   })
   async changePassword(@Body() changePasswordDto: ChangePasswordDto) {
     return this.authService.changePassword(changePasswordDto);
@@ -141,11 +112,6 @@ export class AuthController {
 
   @Post('reset-password')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({
-    summary: 'Reset Password (Alias for change-password)',
-    description:
-      'Resets the user password following OTP verification using the resetToken.',
-  })
   @SwaggerResponse({
     status: HttpStatus.OK,
     description: 'Password reset successfully',
