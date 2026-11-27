@@ -28,7 +28,7 @@ export class UsersService {
 
   async update(id: string, updateData: UpdateQuery<User>): Promise<UserDocument | null> {
     return this.userModel
-      .findByIdAndUpdate(id, updateData, { new: true })
+      .findByIdAndUpdate(id, updateData, { returnDocument: 'after' })
       .exec();
   }
 }
