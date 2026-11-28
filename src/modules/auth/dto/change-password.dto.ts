@@ -1,30 +1,22 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class ChangePasswordDto {
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 'john.doe@example.com',
-    description: 'Registered email address (required if resetToken is not provided)',
+    description: 'Registered email address',
   })
-  @IsOptional()
+  @IsNotEmpty({ message: 'Email is required' })
   @IsEmail({}, { message: 'Invalid email address' })
-  email?: string;
+  email: string;
 
-  @ApiPropertyOptional({
-    example: 'eyJhbGciOiJIUzI1NiIsIn...',
-    description: 'Password reset token received from verify-otp (used for Forgot Password flow)',
-  })
-  @IsOptional()
-  @IsString()
-  resetToken?: string;
-
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 'oldPassword123',
-    description: 'Current password (required when changing password while logged in without resetToken)',
+    description: 'Current password',
   })
-  @IsOptional()
+  @IsNotEmpty({ message: 'Current password is required' })
   @IsString()
-  oldPassword?: string;
+  oldPassword: string;
 
   @ApiProperty({
     example: 'newPassword123',
@@ -35,11 +27,11 @@ export class ChangePasswordDto {
   @MinLength(6, { message: 'New password must be at least 6 characters long' })
   newPassword: string;
 
-  @ApiPropertyOptional({
+  @ApiProperty({
     example: 'newPassword123',
     description: 'Confirmation of new password',
   })
-  @IsOptional()
+  @IsNotEmpty({ message: 'Confirm password is required' })
   @IsString()
-  confirmPassword?: string;
+  confirmPassword: string;
 }

@@ -8,6 +8,7 @@ import { LoginDto } from './dto/login.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { UserRole, UserStatus, OtpType } from '../../types/enums';
@@ -165,6 +166,7 @@ export class AuthService {
         otp,
         otpExpiresAt,
         otpType: OtpType.FORGOT_PASSWORD,
+        isForgotPassword: false,
       });
 
       const data = {
@@ -203,24 +205,19 @@ export class AuthService {
           : OtpType.ACCOUNT_VERIFICATION);
 
       if (targetType === OtpType.FORGOT_PASSWORD) {
-        // Password verification flow: generate short-lived password reset token
-        const resetToken = await this.jwtService.signAsync(
-          {
-            sub: user._id,
-            email: user.email,
-            purpose: 'reset_password',
-          },
-          { expiresIn: '15m' },
-        );
-
         await this.usersService.update(user._id.toString(), {
-          $unset: { otp: 1, otpExpiresAt: 1, otpType: 1 },
-          resetPasswordOtp: 'VERIFIED',
+          $unset: {
+            otp: 1,
+            otpExpiresAt: 1,
+            otpType: 1,
+            resetPasswordOtp: 1,
+            resetPasswordExpiresAt: 1,
+          },
+          isForgotPassword: true,
         });
 
         const data = {
           email: user.email,
-          resetToken,
         };
 
         return new ApiResponse(200, data, Msg.OTP_VERIFIED);
@@ -313,12 +310,9 @@ export class AuthService {
     }
   }
 
-  async changePassword(dto: ChangePasswordDto) {
+  async resetPassword(dto: ResetPasswordDto) {
     try {
-      if (
-        dto.confirmPassword &&
-        dto.newPassword !== dto.confirmPassword
-      ) {
+      if (dto.newPassword !== dto.confirmPassword) {
         return new ApiResponse(
           400,
           {},
@@ -326,61 +320,13 @@ export class AuthService {
         );
       }
 
-      let user: UserDocument | null = null;
-
-      // 1. Password reset via resetToken (from forgot password OTP verification)
-      if (dto.resetToken) {
-        try {
-          const decoded = await this.jwtService.verifyAsync(dto.resetToken);
-          if (decoded.purpose !== 'reset_password') {
-            return new ApiResponse(401, {}, Msg.TOKEN_INVALID);
-          }
-          user = await this.usersService.findById(decoded.sub);
-        } catch {
-          return new ApiResponse(401, {}, Msg.TOKEN_EXPIRED);
-        }
-      }
-      // 2. Password change with oldPassword verification
-      else if (dto.oldPassword) {
-        if (!dto.email) {
-          return new ApiResponse(400, {}, 'Email is required');
-        }
-        user = await this.usersService.findByEmail(dto.email);
-        if (!user) {
-          return new ApiResponse(404, {}, Msg.USER_NOT_FOUND);
-        }
-
-        const isOldPasswordValid = await bcrypt.compare(
-          dto.oldPassword,
-          user.password,
-        );
-        if (!isOldPasswordValid) {
-          return new ApiResponse(400, {}, Msg.PASSWORD_OLD_INCORRECT);
-        }
-      }
-      // 3. Password reset after OTP verified flag on user
-      else if (dto.email) {
-        user = await this.usersService.findByEmail(dto.email);
-        if (!user) {
-          return new ApiResponse(404, {}, Msg.USER_NOT_FOUND);
-        }
-        if (user.resetPasswordOtp !== 'VERIFIED') {
-          return new ApiResponse(
-            400,
-            {},
-            Msg.OTP_NOT_VERIFIED,
-          );
-        }
-      } else {
-        return new ApiResponse(
-          400,
-          {},
-          'Please provide resetToken or oldPassword to change password',
-        );
-      }
-
+      const user = await this.usersService.findByEmail(dto.email);
       if (!user) {
         return new ApiResponse(404, {}, Msg.USER_NOT_FOUND);
+      }
+
+      if (!user.isForgotPassword) {
+        return new ApiResponse(400, {}, Msg.OTP_NOT_VERIFIED);
       }
 
       // Check if new password matches old password
@@ -398,7 +344,61 @@ export class AuthService {
 
       await this.usersService.update(user._id.toString(), {
         password: hashedPassword,
-        $unset: { resetPasswordOtp: 1, resetPasswordExpiresAt: 1 },
+        isForgotPassword: false,
+        $unset: {
+          resetPasswordOtp: 1,
+          resetPasswordExpiresAt: 1,
+          otp: 1,
+          otpExpiresAt: 1,
+          otpType: 1,
+        },
+      });
+
+      return new ApiResponse(200, {}, Msg.PASSWORD_CHANGED);
+    } catch (error) {
+      console.error('resetPassword error:', error);
+      return new ApiResponse(500, {}, Msg.SERVER_ERROR);
+    }
+  }
+
+  async changePassword(dto: ChangePasswordDto) {
+    try {
+      if (dto.newPassword !== dto.confirmPassword) {
+        return new ApiResponse(
+          400,
+          {},
+          'New password and confirm password do not match',
+        );
+      }
+
+      const user = await this.usersService.findByEmail(dto.email);
+      if (!user) {
+        return new ApiResponse(404, {}, Msg.USER_NOT_FOUND);
+      }
+
+      const isOldPasswordValid = await bcrypt.compare(
+        dto.oldPassword,
+        user.password,
+      );
+      if (!isOldPasswordValid) {
+        return new ApiResponse(400, {}, Msg.PASSWORD_OLD_INCORRECT);
+      }
+
+      // Check if new password matches old password
+      const isSamePassword = await bcrypt.compare(
+        dto.newPassword,
+        user.password,
+      );
+      if (isSamePassword) {
+        return new ApiResponse(400, {}, Msg.ENTERED_OLD_PASSWORD);
+      }
+
+      // Hash new password and save
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(dto.newPassword, salt);
+
+      await this.usersService.update(user._id.toString(), {
+        password: hashedPassword,
       });
 
       return new ApiResponse(200, {}, Msg.PASSWORD_CHANGED);

@@ -292,7 +292,9 @@ async function run() {
     // -------------------------------------------------------------
     // 5. ADMIN CREATES CATEGORY VIA MULTIPART/FORM-DATA (FILE UPLOAD)
     // -------------------------------------------------------------
-    console.log('\n\x1b[34m[Test Suite 5: Admin Creates Category via Multipart File Upload]\x1b[0m');
+    console.log(
+      '\n\x1b[34m[Test Suite 5: Admin Creates Category via Multipart File Upload]\x1b[0m',
+    );
     const uploadTimestamp = Date.now();
     const uploadCategoryName = `Painting Service_${uploadTimestamp}`;
     const form = new FormData();
@@ -307,20 +309,53 @@ async function run() {
     const fileBlob = new Blob([fileBytes], { type: 'image/png' });
     form.append('image', fileBlob, 'uploaded-wall.png');
 
-    const multipartRes = await (await fetch(`${BASE_URL}/categories`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${adminToken}`,
-      },
-      body: form,
-    })).json();
+    const multipartRes = await (
+      await fetch(`${BASE_URL}/categories`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${adminToken}`,
+        },
+        body: form,
+      })
+    ).json();
 
-    await assert('Admin uploads category with binary file (201)', multipartRes.statusCode === 201, 201, multipartRes.statusCode);
-    await assert('Uploaded image filename ends with .png', multipartRes.data?.imageName?.endsWith('.png'), true, multipartRes.data?.imageName);
-    await assert('Uploaded image has full dynamic BASE_URL', multipartRes.data?.image?.startsWith(envBaseUrl), true, multipartRes.data?.image);
-    await assert('Skills parsed as array from comma-separated string', Array.isArray(multipartRes.data?.skills) && multipartRes.data?.skills?.length === 3, true, multipartRes.data?.skills);
-    await assert('Order converted to number', typeof multipartRes.data?.order === 'number', true, typeof multipartRes.data?.order);
-    await assert('isPopular converted to boolean', multipartRes.data?.isPopular === true, true, multipartRes.data?.isPopular);
+    await assert(
+      'Admin uploads category with binary file (201)',
+      multipartRes.statusCode === 201,
+      201,
+      multipartRes.statusCode,
+    );
+    await assert(
+      'Uploaded image filename ends with .png',
+      multipartRes.data?.imageName?.endsWith('.png'),
+      true,
+      multipartRes.data?.imageName,
+    );
+    await assert(
+      'Uploaded image has full dynamic BASE_URL',
+      multipartRes.data?.image?.startsWith(envBaseUrl),
+      true,
+      multipartRes.data?.image,
+    );
+    await assert(
+      'Skills parsed as array from comma-separated string',
+      Array.isArray(multipartRes.data?.skills) &&
+        multipartRes.data?.skills?.length === 3,
+      true,
+      multipartRes.data?.skills,
+    );
+    await assert(
+      'Order converted to number',
+      typeof multipartRes.data?.order === 'number',
+      true,
+      typeof multipartRes.data?.order,
+    );
+    await assert(
+      'isPopular converted to boolean',
+      multipartRes.data?.isPopular === true,
+      true,
+      multipartRes.data?.isPopular,
+    );
 
     const uploadCreatedId = multipartRes.data?._id;
     if (uploadCreatedId) {
@@ -330,6 +365,147 @@ async function run() {
         headers: { Authorization: `Bearer ${adminToken}` },
       });
     }
+    // -------------------------------------------------------------
+    // 6. FLAG-BASED FORGOT PASSWORD, VERIFY OTP, RESET & CHANGE PASSWORD
+    // -------------------------------------------------------------
+    console.log('\n\x1b[34m[Test Suite 6: Flag-Based Forgot Password, Reset & Change Password]\x1b[0m');
+    const testUserEmail = `customer_flag_${Date.now()}@yopmail.com`;
+    const initialPass = 'initialPass123';
+
+    // Register test customer
+    const regRes = await (await fetch(`${BASE_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Flag Test User',
+        email: testUserEmail,
+        password: initialPass,
+        phone: `9876${Date.now().toString().slice(-6)}`,
+        role: UserRole.CUSTOMER,
+      }),
+    })).json();
+
+    await assert('Test customer registered (201)', regRes.statusCode === 201 || regRes.statusCode === 200, 201, regRes.statusCode);
+
+    // Verify account OTP so user is verified
+    const regOtp = regRes.data?.otp;
+    const verifyRegRes = await (await fetch(`${BASE_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testUserEmail,
+        otp: regOtp,
+        type: 'ACCOUNT_VERIFICATION',
+      }),
+    })).json();
+    await assert('Test customer account verified', verifyRegRes.statusCode === 200, 200, verifyRegRes.statusCode);
+
+    // Attempt Reset Password BEFORE OTP verification -> MUST FAIL
+    const unverifiedResetRes = await (await fetch(`${BASE_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testUserEmail,
+        newPassword: 'newPassword123',
+        confirmPassword: 'newPassword123',
+      }),
+    })).json();
+    await assert('Reset-password rejected before OTP verification (400)', unverifiedResetRes.statusCode === 400, 400, unverifiedResetRes.statusCode);
+
+    // Request Forgot Password OTP
+    const forgotRes = await (await fetch(`${BASE_URL}/auth/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: testUserEmail }),
+    })).json();
+    await assert('Forgot password OTP requested (200)', forgotRes.statusCode === 200, 200, forgotRes.statusCode);
+    const forgotOtp = forgotRes.data?.otp;
+    await assert('OTP generated for forgot password', !!forgotOtp, true, !!forgotOtp);
+
+    // Verify OTP with type FORGOT_PASSWORD -> Sets isForgotPassword flag, NO resetToken
+    const verifyForgotRes = await (await fetch(`${BASE_URL}/auth/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testUserEmail,
+        otp: forgotOtp,
+        type: 'FORGOT_PASSWORD',
+      }),
+    })).json();
+    await assert('Verify OTP for forgot password succeeds (200)', verifyForgotRes.statusCode === 200, 200, verifyForgotRes.statusCode);
+    await assert('No resetToken returned in verify-otp', verifyForgotRes.data?.resetToken === undefined, true, verifyForgotRes.data?.resetToken === undefined);
+
+    // Reset Password with clean payload (only email, newPassword, confirmPassword)
+    const resetRes = await (await fetch(`${BASE_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testUserEmail,
+        newPassword: 'resetPassword123',
+        confirmPassword: 'resetPassword123',
+      }),
+    })).json();
+    await assert('Password reset successfully (200)', resetRes.statusCode === 200, 200, resetRes.statusCode);
+
+    // Login with new password
+    const loginNewRes = await (await fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testUserEmail,
+        password: 'resetPassword123',
+      }),
+    })).json();
+    await assert('Login with reset password succeeds (200)', loginNewRes.statusCode === 200, 200, loginNewRes.statusCode);
+
+    // Replay attack prevention: Try to call reset-password again -> MUST FAIL
+    const replayResetRes = await (await fetch(`${BASE_URL}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testUserEmail,
+        newPassword: 'anotherPassword123',
+        confirmPassword: 'anotherPassword123',
+      }),
+    })).json();
+    await assert('Reset-password cannot be reused (400)', replayResetRes.statusCode === 400, 400, replayResetRes.statusCode);
+
+    // Change Password flow (requires email, oldPassword, newPassword, confirmPassword)
+    const changePassRes = await (await fetch(`${BASE_URL}/auth/change-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testUserEmail,
+        oldPassword: 'resetPassword123',
+        newPassword: 'finalPassword456',
+        confirmPassword: 'finalPassword456',
+      }),
+    })).json();
+    await assert('Change-password with correct old password succeeds (200)', changePassRes.statusCode === 200, 200, changePassRes.statusCode);
+
+    // Verify login with final password
+    const loginFinalRes = await (await fetch(`${BASE_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testUserEmail,
+        password: 'finalPassword456',
+      }),
+    })).json();
+    await assert('Login with changed password succeeds (200)', loginFinalRes.statusCode === 200, 200, loginFinalRes.statusCode);
+
+    // Change Password with incorrect old password -> MUST FAIL
+    const wrongChangePassRes = await (await fetch(`${BASE_URL}/auth/change-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: testUserEmail,
+        oldPassword: 'wrongOldPassword',
+        newPassword: 'attemptPassword789',
+        confirmPassword: 'attemptPassword789',
+      }),
+    })).json();
+    await assert('Change-password rejects incorrect old password (400)', wrongChangePassRes.statusCode === 400, 400, wrongChangePassRes.statusCode);
 
   } catch (err: any) {
     console.error('\n❌ Unhandled error during test execution:', err);

@@ -21,6 +21,7 @@ import { LoginDto } from './dto/login.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResendOtpDto } from './dto/resend-otp.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from './jwt/jwt-auth.guard';
@@ -127,10 +128,14 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @SwaggerResponse({
     status: HttpStatus.OK,
-    description: 'Password reset successfully',
+    description: 'Password reset successfully after OTP verification',
   })
-  async resetPassword(@Body() changePasswordDto: ChangePasswordDto) {
-    return this.authService.changePassword(changePasswordDto);
+  @SwaggerResponse({
+    status: HttpStatus.BAD_REQUEST,
+    description: 'OTP not verified, passwords do not match, or validation failed',
+  })
+  async resetPassword(@Body() resetPasswordDto: ResetPasswordDto) {
+    return this.authService.resetPassword(resetPasswordDto);
   }
 
   @Get('me')

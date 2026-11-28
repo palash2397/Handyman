@@ -29,8 +29,8 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Create uploads directory for persistent user files
-RUN mkdir -p /app/uploads
+# Create uploads directory and ensure node user ownership
+RUN mkdir -p /app/uploads && chown -R node:node /app/uploads
 
 # Copy only production dependencies from builder stage
 COPY --from=builder /app/node_modules ./node_modules
@@ -39,13 +39,10 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 
 # Copy uploads from builder stage so default category assets are always present
-COPY --from=builder /app/uploads ./uploads
+COPY --chown=node:node --from=builder /app/uploads ./uploads
 
 # Copy package.json for application metadata
 COPY package*.json ./
-
-# Ensure node user owns /app
-RUN chown -R node:node /app
 
 USER node
 
