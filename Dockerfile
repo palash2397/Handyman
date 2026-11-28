@@ -41,6 +41,11 @@ COPY --from=builder /app/dist ./dist
 # Copy package.json for application metadata
 COPY package*.json ./
 
+# Ensure node user owns /app
+RUN chown -R node:node /app
+
+USER node
+
 # Document port (can be overridden by PORT env variable)
 EXPOSE 4022
 
