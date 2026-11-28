@@ -34,6 +34,7 @@ export const Msg = {
   PASSWORD_INCORRECT: `Incorrect password`,
   PASSWORD_OLD_INCORRECT: `Incorrect old password`,
   ENTERED_OLD_PASSWORD: `You have entered your old password. Please enter a new password`,
+  PASSWORD_MISSMATCH: `New password and confirm password do not match`,
 
   // Data
   DATA_FETCHED: `Data fetched successfully`,

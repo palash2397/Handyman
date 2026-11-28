@@ -282,10 +282,7 @@ export class AuthService {
           ? OtpType.FORGOT_PASSWORD
           : OtpType.ACCOUNT_VERIFICATION);
 
-      if (
-        targetType === OtpType.ACCOUNT_VERIFICATION &&
-        user.isEmailVerified
-      ) {
+      if (targetType === OtpType.ACCOUNT_VERIFICATION && user.isEmailVerified) {
         return new ApiResponse(400, {}, Msg.USER_ALREADY_VERIFIED);
       }
 
@@ -364,11 +361,7 @@ export class AuthService {
   async changePassword(dto: ChangePasswordDto) {
     try {
       if (dto.newPassword !== dto.confirmPassword) {
-        return new ApiResponse(
-          400,
-          {},
-          'New password and confirm password do not match',
-        );
+        return new ApiResponse(400, {}, Msg.PASSWORD_MISSMATCH);
       }
 
       const user = await this.usersService.findByEmail(dto.email);
