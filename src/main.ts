@@ -87,7 +87,7 @@ async function bootstrap() {
   });
 
   app.enableShutdownHooks();
-  await app.listen(process.env.PORT ?? 4007);
+  await app.listen(process.env.PORT ?? 4022);
   console.log(`🚀 Handyman server is running on port ${process.env.PORT}`);
 }
 
