@@ -6,15 +6,24 @@ import {
   Body,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
   ApiOperation,
   ApiResponse as SwaggerResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import * as path from 'path';
+import * as fs from 'fs';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -25,6 +34,22 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { JwtAuthGuard } from './jwt/jwt-auth.guard';
+
+const profileStorage = diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(process.cwd(), 'uploads', 'profiles');
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: (req: any, file, cb) => {
+    const ext = extname(file.originalname);
+    const userId = req.user?.sub ? `${req.user.sub}-` : '';
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, `profile-${userId}${uniqueSuffix}${ext}`);
+  },
+});
 
 @ApiTags('Authentication')
 @Controller('auth')
@@ -169,6 +194,14 @@ export class AuthController {
   @Patch('me')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
+  @UseInterceptors(
+    FileInterceptor('profileImage', {
+      storage: profileStorage,
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
+  @ApiConsumes('multipart/form-data', 'application/json')
+  @ApiBody({ type: UpdateProfileDto })
   @HttpCode(HttpStatus.OK)
   @SwaggerResponse({
     status: HttpStatus.OK,
@@ -178,7 +211,16 @@ export class AuthController {
     status: HttpStatus.CONFLICT,
     description: 'Phone number already exists',
   })
-  async updateMyProfile(@Req() req: any, @Body() dto: UpdateProfileDto) {
+  async updateMyProfile(
+    @Req() req: any,
+    @Body() dto: UpdateProfileDto,
+    @UploadedFile() file?: any,
+  ) {
+    if (file) {
+      dto.profileImage = file.filename;
+    } else if (dto.profileImage === '' || dto.profileImage === undefined) {
+      delete dto.profileImage;
+    }
     return this.authService.updateProfile(req.user.sub, dto);
   }
 }

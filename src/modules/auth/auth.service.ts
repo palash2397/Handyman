@@ -134,6 +134,8 @@ export class AuthService {
           onboardingStep: user.onboardingStep,
           isEmailVerified: user.isEmailVerified,
           isPhoneVerified: user.isPhoneVerified,
+          profileImage: this.formatProfileImage(user.profileImage),
+          profileImageName: user.profileImage || '',
         },
       };
 
@@ -256,6 +258,11 @@ export class AuthService {
             isEmailVerified: true,
             isPhoneVerified:
               updatedUser?.isPhoneVerified || user.isPhoneVerified,
+            profileImage: this.formatProfileImage(
+              updatedUser?.profileImage || user.profileImage,
+            ),
+            profileImageName:
+              updatedUser?.profileImage || user.profileImage || '',
           },
         };
 
@@ -310,11 +317,7 @@ export class AuthService {
   async resetPassword(dto: ResetPasswordDto) {
     try {
       if (dto.newPassword !== dto.confirmPassword) {
-        return new ApiResponse(
-          400,
-          {},
-          'New password and confirm password do not match',
-        );
+        return new ApiResponse(400, {}, Msg.PASSWORD_MISSMATCH);
       }
 
       const user = await this.usersService.findByEmail(dto.email);
@@ -401,6 +404,25 @@ export class AuthService {
     }
   }
 
+  private formatProfileImage(filename?: string): string {
+    if (!filename) {
+      return (
+        process.env.DEFAULT_IMAGE ||
+        'https://st2.depositphotos.com/1006318/5909/v/450/depositphotos_59094701-stock-illustration-businessman-profile-icon.jpg'
+      );
+    }
+    if (filename.startsWith('http://') || filename.startsWith('https://')) {
+      return filename;
+    }
+    const rawBaseUrl = process.env.BASE_URL || 'http://localhost:4022';
+    const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+    const clean = filename
+      .replace(/^\/+/, '')
+      .replace(/^uploads\/profiles\//, '')
+      .replace(/^uploads\//, '');
+    return `${baseUrl}/uploads/profiles/${clean}`;
+  }
+
   async getProfile(userId: string) {
     try {
       const user = await this.usersService.findById(userId);
@@ -418,7 +440,8 @@ export class AuthService {
         isEmailVerified: user.isEmailVerified,
         isPhoneVerified: user.isPhoneVerified,
         onboardingStep: user.onboardingStep,
-        profileImage: user.profileImage,
+        profileImage: this.formatProfileImage(user.profileImage),
+        profileImageName: user.profileImage || '',
         bio: user.bio,
         gender: user.gender,
         dob: user.dob,
@@ -470,7 +493,8 @@ export class AuthService {
         isEmailVerified: updatedUser.isEmailVerified,
         isPhoneVerified: updatedUser.isPhoneVerified,
         onboardingStep: updatedUser.onboardingStep,
-        profileImage: updatedUser.profileImage,
+        profileImage: this.formatProfileImage(updatedUser.profileImage),
+        profileImageName: updatedUser.profileImage || '',
         bio: updatedUser.bio,
         gender: updatedUser.gender,
         dob: updatedUser.dob,
