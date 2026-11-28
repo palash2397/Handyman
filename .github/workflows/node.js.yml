@@ -35,6 +35,12 @@ jobs:
     if: github.ref == 'refs/heads/develop'
     runs-on: [self-hosted]
     steps:
+      - name: Pre-checkout fix uploads permissions
+        run: |
+          if [ -d "uploads" ]; then
+            docker run --rm -v "$(pwd)/uploads:/data" alpine chmod -R 777 /data
+          fi
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -45,6 +51,11 @@ jobs:
           rm -f .env
           printf "%s" "${{ secrets.DEV_ENV_FILE }}" > .env
           chmod 600 .env
+
+      - name: Post-checkout ensure uploads permissions
+        run: |
+          mkdir -p uploads/categories
+          docker run --rm -v "$(pwd)/uploads:/data" alpine chmod -R 777 /data
 
       - name: Deploy with Docker Compose
         run: |
@@ -59,6 +70,12 @@ jobs:
     if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted]
     steps:
+      - name: Pre-checkout fix uploads permissions
+        run: |
+          if [ -d "uploads" ]; then
+            docker run --rm -v "$(pwd)/uploads:/data" alpine chmod -R 777 /data
+          fi
+
       - name: Checkout code
         uses: actions/checkout@v4
         with:
@@ -69,6 +86,11 @@ jobs:
           rm -f .env
           printf "%s" "${{ secrets.PROD_ENV_FILE }}" > .env
           chmod 600 .env
+
+      - name: Post-checkout ensure uploads permissions
+        run: |
+          mkdir -p uploads/categories
+          docker run --rm -v "$(pwd)/uploads:/data" alpine chmod -R 777 /data
 
       - name: Deploy with Docker Compose
         run: |

@@ -38,6 +38,9 @@ COPY --from=builder /app/node_modules ./node_modules
 # Copy compiled JavaScript build from builder stage
 COPY --from=builder /app/dist ./dist
 
+# Copy uploads from builder stage so default category assets are always present
+COPY --from=builder /app/uploads ./uploads
+
 # Copy package.json for application metadata
 COPY package*.json ./
 

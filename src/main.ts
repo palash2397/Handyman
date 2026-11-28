@@ -15,6 +15,7 @@ import { IoAdapter } from '@nestjs/platform-socket.io';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 import { join } from 'path';
+import * as fs from 'fs';
 import morgan from 'morgan';
 
 import constants from './constants';
@@ -27,7 +28,11 @@ async function bootstrap() {
   app.use(morgan('dev'));
 
   // Serve uploaded files statically
-  app.useStaticAssets(join(__dirname, '..', 'uploads'), {
+  const uploadsDir = join(process.cwd(), 'uploads');
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  app.useStaticAssets(uploadsDir, {
     prefix: '/uploads',
   });
 
