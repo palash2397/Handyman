@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiConsumes,
   ApiQuery,
   ApiResponse as SwaggerResponse,
@@ -73,7 +74,8 @@ export class CategoriesController {
       },
     ),
   )
-  @ApiConsumes('multipart/form-data', 'application/json')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: CreateCategoryDto })
   @HttpCode(HttpStatus.OK)
   @SwaggerResponse({
     status: HttpStatus.OK,
@@ -97,9 +99,13 @@ export class CategoriesController {
   ) {
     if (files?.image && files.image[0]) {
       createCategoryDto.image = files.image[0].filename;
+    } else if (createCategoryDto.image === '') {
+      delete createCategoryDto.image;
     }
     if (files?.icon && files.icon[0]) {
       createCategoryDto.icon = files.icon[0].filename;
+    } else if (createCategoryDto.icon === '') {
+      delete createCategoryDto.icon;
     }
 
     if (typeof (createCategoryDto.skills as any) === 'string') {
@@ -185,7 +191,8 @@ export class CategoriesController {
       },
     ),
   )
-  @ApiConsumes('multipart/form-data', 'application/json')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: UpdateCategoryDto })
   @HttpCode(HttpStatus.OK)
   @SwaggerResponse({
     status: HttpStatus.OK,
@@ -210,9 +217,13 @@ export class CategoriesController {
   ) {
     if (files?.image && files.image[0]) {
       updateCategoryDto.image = files.image[0].filename;
+    } else if (updateCategoryDto.image === '') {
+      delete updateCategoryDto.image;
     }
     if (files?.icon && files.icon[0]) {
       updateCategoryDto.icon = files.icon[0].filename;
+    } else if (updateCategoryDto.icon === '') {
+      delete updateCategoryDto.icon;
     }
 
     if (typeof (updateCategoryDto.skills as any) === 'string') {
