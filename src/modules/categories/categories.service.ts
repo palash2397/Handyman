@@ -28,6 +28,33 @@ export class CategoriesService {
       .replace(/\-\-+/g, '-');
   }
 
+  private formatCategory(category: CategoryDocument | any) {
+    if (!category) return null;
+    const catObj = category.toObject ? category.toObject() : { ...category };
+
+    const rawBaseUrl = process.env.BASE_URL || 'http://localhost:4022';
+    const baseUrl = rawBaseUrl.replace(/\/+$/, '');
+
+    const formatUrl = (filename?: string) => {
+      if (!filename) return '';
+      if (filename.startsWith('http://') || filename.startsWith('https://')) {
+        return filename;
+      }
+      const clean = filename
+        .replace(/^\/+/, '')
+        .replace(/^uploads\/categories\//, '');
+      return `${baseUrl}/uploads/categories/${clean}`;
+    };
+
+    return {
+      ...catObj,
+      imageName: catObj.image || '',
+      iconName: catObj.icon || '',
+      image: formatUrl(catObj.image),
+      icon: formatUrl(catObj.icon),
+    };
+  }
+
   async create(dto: CreateCategoryDto) {
     try {
       const slug = dto.slug ? this.slugify(dto.slug) : this.slugify(dto.name);
@@ -45,7 +72,7 @@ export class CategoriesService {
         slug,
       });
 
-      return new ApiResponse(201, created, Msg.CATEGORY_ADDED);
+      return new ApiResponse(201, this.formatCategory(created), Msg.CATEGORY_ADDED);
     } catch (error) {
       console.error('create category error:', error);
       return new ApiResponse(500, {}, Msg.SERVER_ERROR);
@@ -73,7 +100,8 @@ export class CategoriesService {
         .sort({ order: 1, name: 1 })
         .exec();
 
-      return new ApiResponse(200, categories, Msg.CATEGORIES_FETCHED);
+      const formatted = categories.map((cat) => this.formatCategory(cat));
+      return new ApiResponse(200, formatted, Msg.CATEGORIES_FETCHED);
     } catch (error) {
       console.error('findAll categories error:', error);
       return new ApiResponse(500, {}, Msg.SERVER_ERROR);
@@ -91,7 +119,7 @@ export class CategoriesService {
         return new ApiResponse(404, {}, Msg.CATEGORY_NOT_FOUND);
       }
 
-      return new ApiResponse(200, category, Msg.CATEGORY_FETCHED);
+      return new ApiResponse(200, this.formatCategory(category), Msg.CATEGORY_FETCHED);
     } catch (error) {
       console.error('findById category error:', error);
       return new ApiResponse(500, {}, Msg.SERVER_ERROR);
@@ -129,7 +157,7 @@ export class CategoriesService {
         )
         .exec();
 
-      return new ApiResponse(200, updated, Msg.CATEGORY_UPDATED);
+      return new ApiResponse(200, this.formatCategory(updated), Msg.CATEGORY_UPDATED);
     } catch (error) {
       console.error('update category error:', error);
       return new ApiResponse(500, {}, Msg.SERVER_ERROR);

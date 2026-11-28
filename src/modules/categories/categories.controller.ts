@@ -8,16 +8,22 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFiles,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
-  ApiOperation,
+  ApiConsumes,
   ApiQuery,
   ApiResponse as SwaggerResponse,
   ApiTags,
 } from '@nestjs/swagger';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
+import * as fs from 'fs';
 import { CategoriesService } from './categories.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -26,6 +32,25 @@ import { JwtAuthGuard } from '../auth/jwt/jwt-auth.guard';
 import { RoleGuard } from '../auth/roles/roles.guard';
 import { Roles } from '../auth/roles/roles.decorator';
 import { UserRole } from '../../types/enums';
+
+const categoryStorage = diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = './uploads/categories';
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    const ext = extname(file.originalname);
+    const baseName = file.originalname
+      .replace(ext, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '-');
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+    cb(null, `${baseName}-${uniqueSuffix}${ext}`);
+  },
+});
 
 @ApiTags('Categories')
 @Controller('categories')
@@ -36,6 +61,19 @@ export class CategoriesController {
   @UseGuards(JwtAuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('access-token')
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'icon', maxCount: 1 },
+      ],
+      {
+        storage: categoryStorage,
+        limits: { fileSize: 5 * 1024 * 1024 },
+      },
+    ),
+  )
+  @ApiConsumes('multipart/form-data', 'application/json')
   @HttpCode(HttpStatus.OK)
   @SwaggerResponse({
     status: HttpStatus.OK,
@@ -49,7 +87,46 @@ export class CategoriesController {
     status: HttpStatus.FORBIDDEN,
     description: 'Admin role required',
   })
-  async create(@Body() createCategoryDto: CreateCategoryDto) {
+  async create(
+    @Body() createCategoryDto: CreateCategoryDto,
+    @UploadedFiles()
+    files?: {
+      image?: any[];
+      icon?: any[];
+    },
+  ) {
+    if (files?.image && files.image[0]) {
+      createCategoryDto.image = files.image[0].filename;
+    }
+    if (files?.icon && files.icon[0]) {
+      createCategoryDto.icon = files.icon[0].filename;
+    }
+
+    if (typeof (createCategoryDto.skills as any) === 'string') {
+      try {
+        createCategoryDto.skills = JSON.parse(
+          createCategoryDto.skills as unknown as string,
+        );
+      } catch {
+        createCategoryDto.skills = (
+          createCategoryDto.skills as unknown as string
+        )
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+    }
+    if (typeof (createCategoryDto as any).isPopular === 'string') {
+      createCategoryDto.isPopular =
+        (createCategoryDto as any).isPopular === 'true';
+    }
+    if (typeof (createCategoryDto as any).order === 'string') {
+      createCategoryDto.order = parseInt(
+        (createCategoryDto as any).order,
+        10,
+      );
+    }
+
     return this.categoriesService.create(createCategoryDto);
   }
 
@@ -96,6 +173,19 @@ export class CategoriesController {
   @UseGuards(JwtAuthGuard, RoleGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('access-token')
+  @UseInterceptors(
+    FileFieldsInterceptor(
+      [
+        { name: 'image', maxCount: 1 },
+        { name: 'icon', maxCount: 1 },
+      ],
+      {
+        storage: categoryStorage,
+        limits: { fileSize: 5 * 1024 * 1024 },
+      },
+    ),
+  )
+  @ApiConsumes('multipart/form-data', 'application/json')
   @HttpCode(HttpStatus.OK)
   @SwaggerResponse({
     status: HttpStatus.OK,
@@ -112,7 +202,44 @@ export class CategoriesController {
   async update(
     @Param('id') id: string,
     @Body() updateCategoryDto: UpdateCategoryDto,
+    @UploadedFiles()
+    files?: {
+      image?: any[];
+      icon?: any[];
+    },
   ) {
+    if (files?.image && files.image[0]) {
+      updateCategoryDto.image = files.image[0].filename;
+    }
+    if (files?.icon && files.icon[0]) {
+      updateCategoryDto.icon = files.icon[0].filename;
+    }
+
+    if (typeof (updateCategoryDto.skills as any) === 'string') {
+      try {
+        updateCategoryDto.skills = JSON.parse(
+          updateCategoryDto.skills as unknown as string,
+        );
+      } catch {
+        updateCategoryDto.skills = (
+          updateCategoryDto.skills as unknown as string
+        )
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean);
+      }
+    }
+    if (typeof (updateCategoryDto as any).isPopular === 'string') {
+      updateCategoryDto.isPopular =
+        (updateCategoryDto as any).isPopular === 'true';
+    }
+    if (typeof (updateCategoryDto as any).order === 'string') {
+      updateCategoryDto.order = parseInt(
+        (updateCategoryDto as any).order,
+        10,
+      );
+    }
+
     return this.categoriesService.update(id, updateCategoryDto);
   }
 

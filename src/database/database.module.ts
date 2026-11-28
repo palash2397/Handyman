@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AdminSeeder } from './seeders/admin.seeder';
+import { CategoriesSeeder } from './seeders/categories.seeder';
 import { User, UserSchema } from '../modules/users/schemas/user.schema';
+import { Category, CategorySchema } from '../modules/categories/schemas/category.schema';
 
 @Module({
   imports: [
@@ -15,9 +17,12 @@ import { User, UserSchema } from '../modules/users/schemas/user.schema';
       retryWrites: true,
       retryReads: true,
     }),
-    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
+    MongooseModule.forFeature([
+      { name: User.name, schema: UserSchema },
+      { name: Category.name, schema: CategorySchema },
+    ]),
   ],
-  providers: [AdminSeeder],
-  exports: [AdminSeeder],
+  providers: [AdminSeeder, CategoriesSeeder],
+  exports: [AdminSeeder, CategoriesSeeder],
 })
 export class DatabaseModule {}
