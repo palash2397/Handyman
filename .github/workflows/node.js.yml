@@ -54,12 +54,12 @@ jobs:
 
       - name: Post-checkout ensure uploads permissions
         run: |
-          mkdir -p uploads/categories
+          mkdir -p uploads/categories uploads/profiles
           docker run --rm -v "$(pwd)/uploads:/data" alpine chmod -R 777 /data
 
       - name: Deploy with Docker Compose
         run: |
-          docker compose up -d --build --remove-orphans
+          docker compose up -d --build --force-recreate --remove-orphans
 
   # -------------------------------------------------------------
   #  Deploy to Production (Using Docker)
@@ -89,9 +89,9 @@ jobs:
 
       - name: Post-checkout ensure uploads permissions
         run: |
-          mkdir -p uploads/categories
+          mkdir -p uploads/categories uploads/profiles
           docker run --rm -v "$(pwd)/uploads:/data" alpine chmod -R 777 /data
 
       - name: Deploy with Docker Compose
         run: |
-          docker compose up -d --build --remove-orphans
+          docker compose up -d --build --force-recreate --remove-orphans
