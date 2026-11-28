@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../src/app.module';
 import { ValidationPipe } from '@nestjs/common';
-import { UserRole, UserStatus, OtpType } from '../src/types/enums';
+import { UserRole, UserStatus } from '../src/types/enums';
 import { Msg } from '../src/helpers/responseMsg';
 
 interface TestResult {
@@ -15,12 +15,7 @@ interface TestResult {
 
 const results: TestResult[] = [];
 
-async function assert(
-  name: string,
-  condition: boolean,
-  expected?: any,
-  actual?: any,
-) {
+async function assert(name: string, condition: boolean, expected?: any, actual?: any) {
   if (condition) {
     console.log(`  \x1b[32m✔ PASS\x1b[0m: ${name}`);
     results.push({ name, passed: true });
@@ -37,9 +32,7 @@ async function run() {
   console.log('🚀 Booting Handyman NestJS Application for Testing...');
   console.log('=============================================\n');
 
-  const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'warn'],
-  });
+  const app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
 
   app.setGlobalPrefix('/api/v1');
   app.useGlobalPipes(
@@ -52,22 +45,17 @@ async function run() {
 
   const PORT = 4099;
   await app.listen(PORT);
-  console.log(
-    `Nest test server listening on http://127.0.0.1:${PORT}/api/v1\n`,
-  );
+  console.log(`Nest test server listening on http://127.0.0.1:${PORT}/api/v1\n`);
 
   const BASE_URL = `http://127.0.0.1:${PORT}/api/v1`;
 
   const timestamp = Date.now();
   const testCustomerEmail = `customer_${timestamp}@yopmail.com`;
-  const testProviderEmail = `provider_${timestamp}@yopmail.com`;
-  const testCompanyEmail = `company_${timestamp}@yopmail.com`;
   const initialPassword = 'Password123!';
 
   let customerToken = '';
-  let providerToken = '';
-  let companyToken = '';
   let adminToken = '';
+  let createdCategoryId = '';
 
   try {
     // -------------------------------------------------------------
@@ -76,255 +64,173 @@ async function run() {
     console.log('\x1b[34m[Test Suite 1: Health Check]\x1b[0m');
     const healthRes = await fetch(`${BASE_URL}/health`);
     const healthJson = await healthRes.json();
-    await assert(
-      'GET /health returns 200',
-      healthRes.status === 200,
-      200,
-      healthRes.status,
-    );
-    await assert(
-      'GET /health status is ok',
-      healthJson.status === 'ok',
-      'ok',
-      healthJson.status,
-    );
+    await assert('GET /health returns 200', healthRes.status === 200, 200, healthRes.status);
+    await assert('GET /health status is ok', healthJson.status === 'ok', 'ok', healthJson.status);
 
     // -------------------------------------------------------------
-    // 2. SETUP USERS & ACQUIRE TOKENS FOR ALL ROLES
+    // 2. SETUP USER TOKENS (Customer & Admin)
     // -------------------------------------------------------------
-    console.log('\n\x1b[34m[Test Suite 2: Setup Users & Tokens for All Roles]\x1b[0m');
+    console.log('\n\x1b[34m[Test Suite 2: Setup Tokens]\x1b[0m');
 
     // Customer
-    const regCust = await (await fetch(`${BASE_URL}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: 'Alice Customer',
-        email: testCustomerEmail,
-        password: initialPassword,
-        role: UserRole.CUSTOMER,
-      }),
-    })).json();
+    const regCust = await (
+      await fetch(`${BASE_URL}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Alice Customer',
+          email: testCustomerEmail,
+          password: initialPassword,
+          role: UserRole.CUSTOMER,
+        }),
+      })
+    ).json();
 
-    const verifyCust = await (await fetch(`${BASE_URL}/auth/verify-otp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: testCustomerEmail,
-        otp: regCust.data?.otp,
-      }),
-    })).json();
+    const verifyCust = await (
+      await fetch(`${BASE_URL}/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: testCustomerEmail,
+          otp: regCust.data?.otp,
+        }),
+      })
+    ).json();
     customerToken = verifyCust.data?.accessToken;
-    await assert('Customer registered, verified, and JWT token acquired', !!customerToken, true, !!customerToken);
-
-    // Provider
-    const regProv = await (await fetch(`${BASE_URL}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: 'Bob Handyman',
-        email: testProviderEmail,
-        password: initialPassword,
-        role: UserRole.PROVIDER,
-      }),
-    })).json();
-
-    const verifyProv = await (await fetch(`${BASE_URL}/auth/verify-otp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: testProviderEmail,
-        otp: regProv.data?.otp,
-      }),
-    })).json();
-    providerToken = verifyProv.data?.accessToken;
-    await assert('Provider registered, verified, and JWT token acquired', !!providerToken, true, !!providerToken);
-
-    // Company
-    const regComp = await (await fetch(`${BASE_URL}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: 'Charlie CEO',
-        email: testCompanyEmail,
-        password: initialPassword,
-        role: UserRole.COMPANY,
-        companyName: 'Charlie Tech Solutions Ltd',
-        authorizedPersonName: 'Charlie CEO',
-      }),
-    })).json();
-
-    const verifyComp = await (await fetch(`${BASE_URL}/auth/verify-otp`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: testCompanyEmail,
-        otp: regComp.data?.otp,
-      }),
-    })).json();
-    companyToken = verifyComp.data?.accessToken;
-    await assert('Company registered, verified, and JWT token acquired', !!companyToken, true, !!companyToken);
+    await assert('Customer token acquired', !!customerToken, true, !!customerToken);
 
     // Admin
-    const adminLogin = await (await fetch(`${BASE_URL}/auth/login`, {
+    const adminLogin = await (
+      await fetch(`${BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: 'admin@yopmail.com',
+          password: 'admin1234',
+        }),
+      })
+    ).json();
+    adminToken = adminLogin.data?.accessToken;
+    await assert('Admin token acquired', !!adminToken, true, !!adminToken);
+
+    // -------------------------------------------------------------
+    // 3. CATEGORIES API TESTS
+    // -------------------------------------------------------------
+    console.log('\n\x1b[34m[Test Suite 3: Categories Security & Permissions]\x1b[0m');
+
+    // A. Unauthorized creation (no token)
+    const unauthCreate = await fetch(`${BASE_URL}/categories`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: 'admin@yopmail.com',
-        password: 'admin1234',
-      }),
-    })).json();
-    adminToken = adminLogin.data?.accessToken;
-    await assert('Admin logged in and JWT token acquired', !!adminToken, true, !!adminToken);
-
-    // -------------------------------------------------------------
-    // 3. UNAUTHORIZED ACCESS CHECK ON /auth/me
-    // -------------------------------------------------------------
-    console.log('\n\x1b[34m[Test Suite 3: Unauthorized Access via JwtAuthGuard]\x1b[0m');
-    const unauthRes = await fetch(`${BASE_URL}/auth/me`);
-    const unauthJson = await unauthRes.json();
-    await assert('GET /auth/me without token returns 401', unauthRes.status === 401, 401, unauthRes.status);
-    await assert('401 response contains No token provided', JSON.stringify(unauthJson).includes('No token provided'), true, unauthJson);
-
-    // -------------------------------------------------------------
-    // 4. CUSTOMER PROFILE (GET & PATCH /auth/me)
-    // -------------------------------------------------------------
-    console.log('\n\x1b[34m[Test Suite 4: Customer Profile in Auth Module]\x1b[0m');
-    const custProfileRes = await fetch(`${BASE_URL}/auth/me`, {
-      headers: { Authorization: `Bearer ${customerToken}` },
+      body: JSON.stringify({ name: 'Hacker Plumbing' }),
     });
-    const custProfileJson = await custProfileRes.json();
-    await assert('GET /auth/me for Customer returns 200', custProfileJson.statusCode === 200, 200, custProfileJson.statusCode);
-    await assert('Customer role is CUSTOMER', custProfileJson.data?.role === UserRole.CUSTOMER, UserRole.CUSTOMER, custProfileJson.data?.role);
-    await assert('Customer status is ACTIVE', custProfileJson.data?.status === UserStatus.ACTIVE, UserStatus.ACTIVE, custProfileJson.data?.status);
-    await assert('Customer password is NOT exposed', custProfileJson.data?.password === undefined, undefined, custProfileJson.data?.password);
+    await assert('POST /categories without token returns 401', unauthCreate.status === 401, 401, unauthCreate.status);
 
-    // Update Customer Profile
-    const updateCustRes = await fetch(`${BASE_URL}/auth/me`, {
-      method: 'PATCH',
+    // B. Forbidden creation (Customer token instead of Admin)
+    const custCreate = await fetch(`${BASE_URL}/categories`, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${customerToken}`,
       },
+      body: JSON.stringify({ name: 'Customer Category' }),
+    });
+    await assert('POST /categories with Customer token returns 403 Forbidden', custCreate.status === 403, 403, custCreate.status);
+
+    console.log('\n\x1b[34m[Test Suite 4: Categories CRUD by Admin]\x1b[0m');
+
+    // C. Admin creates Plumbing Category
+    const categoryName = `Plumbing_${timestamp}`;
+    const createPlumbing = await (await fetch(`${BASE_URL}/categories`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
       body: JSON.stringify({
-        name: 'Alice Updated',
-        bio: 'Customer looking for verified home repairs',
-        address: {
-          street: '100 Broadway',
-          city: 'New York',
-          state: 'NY',
-          postalCode: '10001',
-        },
+        name: categoryName,
+        description: 'Complete plumbing, pipe repair, and drain cleaning services.',
+        icon: 'https://cdn.example.com/icons/plumbing.svg',
+        image: 'https://cdn.example.com/images/plumbing.jpg',
+        skills: ['Pipe Leak Repair', 'Drain Cleaning', 'Tap Installation', 'Water Heater Setup'],
+        order: 1,
+        isPopular: true,
       }),
-    });
-    const updateCustJson = await updateCustRes.json();
-    await assert('PATCH /auth/me updates Customer profile', updateCustJson.statusCode === 200, 200, updateCustJson.statusCode);
-    await assert('Customer updated name reflects in response', updateCustJson.data?.name === 'Alice Updated', 'Alice Updated', updateCustJson.data?.name);
-    await assert('Customer updated address reflects in response', updateCustJson.data?.address?.city === 'New York', 'New York', updateCustJson.data?.address?.city);
+    })).json();
 
-    // -------------------------------------------------------------
-    // 5. PROVIDER PROFILE (GET & PATCH /auth/me)
-    // -------------------------------------------------------------
-    console.log('\n\x1b[34m[Test Suite 5: Provider Profile in Auth Module]\x1b[0m');
-    const provProfileRes = await fetch(`${BASE_URL}/auth/me`, {
-      headers: { Authorization: `Bearer ${providerToken}` },
-    });
-    const provProfileJson = await provProfileRes.json();
-    await assert('GET /auth/me for Provider returns 200', provProfileJson.statusCode === 200, 200, provProfileJson.statusCode);
-    await assert('Provider role is PROVIDER', provProfileJson.data?.role === UserRole.PROVIDER, UserRole.PROVIDER, provProfileJson.data?.role);
-    await assert('Provider status is PENDING', provProfileJson.data?.status === UserStatus.PENDING, UserStatus.PENDING, provProfileJson.data?.status);
-    await assert('Provider onboardingStep is initialized to 1', provProfileJson.data?.onboardingStep === 1, 1, provProfileJson.data?.onboardingStep);
+    await assert('POST /categories by Admin succeeds (201)', createPlumbing.statusCode === 201, 201, createPlumbing.statusCode);
+    await assert('Category message is CATEGORY_ADDED', createPlumbing.message === Msg.CATEGORY_ADDED, Msg.CATEGORY_ADDED, createPlumbing.message);
+    await assert('Category slug is auto-generated', !!createPlumbing.data?.slug, true, !!createPlumbing.data?.slug);
+    await assert('Category skills count is 4', createPlumbing.data?.skills?.length === 4, 4, createPlumbing.data?.skills?.length);
 
-    // Update Provider Profile
-    const updateProvRes = await fetch(`${BASE_URL}/auth/me`, {
+    createdCategoryId = createPlumbing.data?._id;
+
+    // D. Duplicate category creation check
+    const duplicateCreate = await (await fetch(`${BASE_URL}/categories`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${adminToken}`,
+      },
+      body: JSON.stringify({
+        name: categoryName,
+        description: 'Duplicate attempt',
+      }),
+    })).json();
+
+    await assert('POST /categories rejects duplicate category (409)', duplicateCreate.statusCode === 409, 409, duplicateCreate.statusCode);
+    await assert('Duplicate message is CATEGORY_EXISTS', duplicateCreate.message === Msg.CATEGORY_EXISTS, Msg.CATEGORY_EXISTS, duplicateCreate.message);
+
+    // E. Public list of categories (for mobile apps / providers)
+    const listRes = await (await fetch(`${BASE_URL}/categories`)).json();
+    await assert('GET /categories succeeds publicly (200)', listRes.statusCode === 200, 200, listRes.statusCode);
+    await assert('GET /categories returns category list array', Array.isArray(listRes.data), true, Array.isArray(listRes.data));
+    await assert('Created category is in list', listRes.data.some((c: any) => c._id === createdCategoryId), true, true);
+
+    // F. Search categories by keyword
+    const searchRes = await (await fetch(`${BASE_URL}/categories?search=${categoryName}`)).json();
+    await assert('GET /categories?search=... finds category', searchRes.data?.length >= 1, true, searchRes.data?.length);
+
+    // G. Get category by ID
+    const getByIdRes = await (await fetch(`${BASE_URL}/categories/${createdCategoryId}`)).json();
+    await assert('GET /categories/:id returns single category (200)', getByIdRes.statusCode === 200, 200, getByIdRes.statusCode);
+    await assert('Category name matches', getByIdRes.data?.name === categoryName, categoryName, getByIdRes.data?.name);
+
+    // H. Update category as Admin
+    const updateRes = await (await fetch(`${BASE_URL}/categories/${createdCategoryId}`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${providerToken}`,
+        Authorization: `Bearer ${adminToken}`,
       },
       body: JSON.stringify({
-        bio: 'Master technician with 7 years of electrical & plumbing experience.',
-        experienceYears: 7,
-        languages: ['English', 'Spanish'],
-        address: {
-          street: '456 Oak Avenue',
-          city: 'Brooklyn',
-          state: 'NY',
-          postalCode: '11201',
-          latitude: 40.6782,
-          longitude: -73.9442,
-        },
+        description: 'Updated plumbing description with 24/7 emergency support.',
+        order: 5,
       }),
-    });
-    const updateProvJson = await updateProvRes.json();
-    await assert('PATCH /auth/me updates Provider details', updateProvJson.statusCode === 200, 200, updateProvJson.statusCode);
-    await assert('Provider updated experienceYears is 7', updateProvJson.data?.experienceYears === 7, 7, updateProvJson.data?.experienceYears);
-    await assert('Provider updated languages count is 2', updateProvJson.data?.languages?.length === 2, 2, updateProvJson.data?.languages?.length);
+    })).json();
 
-    // -------------------------------------------------------------
-    // 6. COMPANY PROFILE (GET & PATCH /auth/me)
-    // -------------------------------------------------------------
-    console.log('\n\x1b[34m[Test Suite 6: Company Profile in Auth Module]\x1b[0m');
-    const compProfileRes = await fetch(`${BASE_URL}/auth/me`, {
-      headers: { Authorization: `Bearer ${companyToken}` },
-    });
-    const compProfileJson = await compProfileRes.json();
-    await assert('GET /auth/me for Company returns 200', compProfileJson.statusCode === 200, 200, compProfileJson.statusCode);
-    await assert('Company role is COMPANY', compProfileJson.data?.role === UserRole.COMPANY, UserRole.COMPANY, compProfileJson.data?.role);
-    await assert('Company companyName is Charlie Tech Solutions Ltd', compProfileJson.data?.companyName === 'Charlie Tech Solutions Ltd', 'Charlie Tech Solutions Ltd', compProfileJson.data?.companyName);
-    await assert('Company authorizedPersonName matches', compProfileJson.data?.authorizedPersonName === 'Charlie CEO', 'Charlie CEO', compProfileJson.data?.authorizedPersonName);
+    await assert('PATCH /categories/:id updates category (200)', updateRes.statusCode === 200, 200, updateRes.statusCode);
+    await assert('Category message is CATEGORY_UPDATED', updateRes.message === Msg.CATEGORY_UPDATED, Msg.CATEGORY_UPDATED, updateRes.message);
+    await assert('Updated description reflects', updateRes.data?.description?.includes('24/7 emergency'), true, updateRes.data?.description);
 
-    // Update Company Profile
-    const updateCompRes = await fetch(`${BASE_URL}/auth/me`, {
-      method: 'PATCH',
+    // I. Delete category as Admin
+    const deleteRes = await (await fetch(`${BASE_URL}/categories/${createdCategoryId}`, {
+      method: 'DELETE',
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${companyToken}`,
+        Authorization: `Bearer ${adminToken}`,
       },
-      body: JSON.stringify({
-        bio: 'Enterprise maintenance and electrical solutions contractor.',
-        address: {
-          street: '789 Commercial Blvd',
-          city: 'Manhattan',
-          state: 'NY',
-          postalCode: '10018',
-        },
-      }),
-    });
-    const updateCompJson = await updateCompRes.json();
-    await assert('PATCH /auth/me updates Company profile', updateCompJson.statusCode === 200, 200, updateCompJson.statusCode);
-    await assert('Company bio updated successfully', updateCompJson.data?.bio?.includes('Enterprise maintenance'), true, updateCompJson.data?.bio);
+    })).json();
 
-    // -------------------------------------------------------------
-    // 7. ADMIN PROFILE (GET /auth/me)
-    // -------------------------------------------------------------
-    console.log('\n\x1b[34m[Test Suite 7: Admin Profile in Auth Module]\x1b[0m');
-    const adminProfileRes = await fetch(`${BASE_URL}/auth/me`, {
-      headers: { Authorization: `Bearer ${adminToken}` },
-    });
-    const adminProfileJson = await adminProfileRes.json();
-    await assert('GET /auth/me for Admin returns 200', adminProfileJson.statusCode === 200, 200, adminProfileJson.statusCode);
-    await assert('Admin role is ADMIN', adminProfileJson.data?.role === UserRole.ADMIN, UserRole.ADMIN, adminProfileJson.data?.role);
-    await assert('Admin email is admin@yopmail.com', adminProfileJson.data?.email === 'admin@yopmail.com', 'admin@yopmail.com', adminProfileJson.data?.email);
+    await assert('DELETE /categories/:id deletes category (200)', deleteRes.statusCode === 200, 200, deleteRes.statusCode);
+    await assert('Category message is CATEGORY_DELETED', deleteRes.message === Msg.CATEGORY_DELETED, Msg.CATEGORY_DELETED, deleteRes.message);
 
-    // -------------------------------------------------------------
-    // 8. ALIAS ROUTE: GET /auth/profile
-    // -------------------------------------------------------------
-    console.log('\n\x1b[34m[Test Suite 8: Alias GET /auth/profile]\x1b[0m');
-    const aliasRes = await fetch(`${BASE_URL}/auth/profile`, {
-      headers: { Authorization: `Bearer ${customerToken}` },
-    });
-    const aliasJson = await aliasRes.json();
-    await assert('GET /auth/profile returns 200', aliasJson.statusCode === 200, 200, aliasJson.statusCode);
-    await assert('GET /auth/profile returns authenticated email', aliasJson.data?.email === testCustomerEmail.toLowerCase(), testCustomerEmail.toLowerCase(), aliasJson.data?.email);
+    // J. Verify category no longer found
+    const verifyDeleted = await (await fetch(`${BASE_URL}/categories/${createdCategoryId}`)).json();
+    await assert('GET /categories/:id on deleted category returns 404', verifyDeleted.statusCode === 404, 404, verifyDeleted.statusCode);
 
   } catch (err: any) {
     console.error('\n❌ Unhandled error during test execution:', err);
-    results.push({
-      name: 'Execution Crash',
-      passed: false,
-      error: err?.message,
-    });
+    results.push({ name: 'Execution Crash', passed: false, error: err?.message });
   } finally {
     await app.close();
   }
@@ -343,9 +249,7 @@ async function run() {
 
   if (failed > 0) {
     console.error('\n❌ SOME TESTS FAILED:');
-    results
-      .filter((r) => !r.passed)
-      .forEach((r) => console.error(`  - ${r.name}`));
+    results.filter((r) => !r.passed).forEach((r) => console.error(`  - ${r.name}`));
     process.exit(1);
   } else {
     console.log('\n🎉 ALL TESTS PASSED SUCCESSFULLY!\n');

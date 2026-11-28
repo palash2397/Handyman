@@ -30,12 +30,13 @@ export class RoleGuard implements CanActivate {
 
     console.log(user);
 
-    if (!user || !user.roles) {
+    const rawRoles = user?.roles || user?.role;
+    if (!user || !rawRoles) {
       throw new ForbiddenException(new ApiResponse(403, {}, Msg.FORBIDDEN));
     }
 
     // Convert string roles (like "ADMIN") from JWT into an array
-    const userRoles = Array.isArray(user.roles) ? user.roles : [user.roles];
+    const userRoles = Array.isArray(rawRoles) ? rawRoles : [rawRoles];
 
     const hasRole = requiredRoles.some((role) => userRoles.includes(role));
 

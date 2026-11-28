@@ -46,6 +46,15 @@ export const Msg = {
   DATA_ALREADY_EXISTS: `Data  already exists`,
   DATA_IS_CLOSED: `Data is closed`,
 
+  // Category
+  CATEGORY_ADDED: `Category added successfully`,
+  CATEGORY_FETCHED: `Category fetched successfully`,
+  CATEGORIES_FETCHED: `Categories fetched successfully`,
+  CATEGORY_UPDATED: `Category updated successfully`,
+  CATEGORY_DELETED: `Category deleted successfully`,
+  CATEGORY_NOT_FOUND: `Category not found`,
+  CATEGORY_EXISTS: `Category with this name already exists`,
+
   // Id
   ID_REQUIRED: `Id is required`,
 

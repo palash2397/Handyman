@@ -176,16 +176,4 @@ export class AuthController {
   async updateMyProfile(@Req() req: any, @Body() dto: UpdateProfileDto) {
     return this.authService.updateProfile(req.user.sub, dto);
   }
-
-  @Patch('profile')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth('access-token')
-  @HttpCode(HttpStatus.OK)
-  @SwaggerResponse({
-    status: HttpStatus.OK,
-    description: 'Current user profile updated successfully',
-  })
-  async updateProfile(@Req() req: any, @Body() dto: UpdateProfileDto) {
-    return this.authService.updateProfile(req.user.sub, dto);
-  }
 }
