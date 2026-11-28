@@ -55,7 +55,21 @@ pids
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-# Uploads and temporary categories source assets
+# Temporary category source assets
 categories/
-uploads/
+
+# Uploads: ignore dynamic uploads but track initial category seed assets
+uploads/*
+!uploads/categories/
+uploads/categories/*
+!uploads/categories/Appliance Repair.png
+!uploads/categories/Carpentry.png
+!uploads/categories/Cleaning.png
+!uploads/categories/company.png
+!uploads/categories/Electrical.png
+!uploads/categories/Gardening.png
+!uploads/categories/Home Service.png
+!uploads/categories/HVAC.png
+!uploads/categories/Painting.png
+!uploads/categories/Plumbing.png
 
